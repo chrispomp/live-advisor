@@ -32,7 +32,7 @@ from google.genai.types import (
 
 # --- Configuration ---
 # Default values, can be overridden by CLI args
-DEFAULT_PROJECT_ID = "sascha-playground-doit"
+DEFAULT_PROJECT_ID = "fsi-banking-agentspace"
 DEFAULT_LOCATION = "us-central1"
 DEFAULT_MODEL = "gemini-2.0-flash-live-preview-04-09"
 

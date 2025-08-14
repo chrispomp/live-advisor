@@ -14,7 +14,7 @@ from google.genai.types import (
 import numpy as np
 import soundfile as sf
 
-PROJECT_ID = "sascha-playground-doit"
+PROJECT_ID = "fsi-banking-agentspace"
 LOCATION = "us-central1"
 MODEL_ID = "gemini-2.0-flash-live-preview-04-09"
 voice_name = "Aoede"

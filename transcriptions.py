@@ -2,7 +2,7 @@ import asyncio
 from google import genai
 from google.genai import types
 
-PROJECT_ID = "sascha-playground-doit"
+PROJECT_ID = "fsi-banking-agentspace"
 LOCATION = "us-central1"
 MODEL = "gemini-2.0-flash-live-preview-04-09"
 

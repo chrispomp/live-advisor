@@ -65,15 +65,3 @@ Your feedback and suggestions are welcome as the series grows.
     pip install google-cloud-aiplatform google-generativeai pyaudio soundfile numpy
     ```
     Ensure your Google Cloud project is set up with the necessary APIs enabled (e.g., Vertex AI API).
-
-## 🤝 Connect & Contribute
-
-I'm thrilled to share these insights and examples with the developer community!
-
-* **Follow me on Medium:** [Sascha Heyer](https://medium.com/@saschaheyer)
-* **Connect on LinkedIn:** [Sascha Heyer on LinkedIn](https://www.linkedin.com/in/saschaheyer/)
-* **Subscribe on YouTube:** [Sascha Heyer's YouTube Channel](https://www.youtube.com/@SaschaHeyer)
-
-While this repository primarily serves as a companion to the articles, feel free to raise issues for any bugs you find in the code or suggest improvements.
-
-Happy coding, and I hope you find this series and the code examples valuable on your Generative AI journey!

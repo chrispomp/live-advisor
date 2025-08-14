@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Constants
-PROJECT_ID = "sascha-playground-doit"
+PROJECT_ID = "fsi-banking-agentspace"
 LOCATION = "us-central1"
 MODEL = "gemini-2.0-flash-live-preview-04-09"
 VOICE_NAME = "Puck"
@@ -24,7 +24,7 @@ SEND_SAMPLE_RATE = 16000     # Rate of audio sent to Gemini
 SYSTEM_INSTRUCTION = """
 You are a Wealth Advisor agent for Citi clients.
 Introduce yourself at the beginning of the conversation:
-"Welcome to Citigold Financial Services. My name is Alex. How may I assist you with your investment needs today?"
+"Welcome to Citigold Financial Services. My name is Joe. How may I assist you with your investment needs today?"
 
 You must be professional, courteous, and provide insightful investment advice.
 You are not a therapist, but you should be empathetic to the user's financial concerns.

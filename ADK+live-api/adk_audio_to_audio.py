@@ -27,7 +27,7 @@ CHUNK_SIZE = 512
 CHANNELS = 1
 
 # Project configuration
-PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "sascha-playground-doit")
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "fsi-banking-agentspace")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 MODEL = "gemini-2.0-flash-live-preview-04-09"
 VOICE_NAME = "Aoede"  # Changed from "Puck" to "Aoede"
