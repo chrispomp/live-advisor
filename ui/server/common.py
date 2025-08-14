@@ -37,31 +37,13 @@ You are equipped to discuss the following topics:
 - **Portfolio Diversification:** Discuss the importance of diversification and how to achieve it across different asset classes.
 
 You have access to the following tools:
-- **`get_stock_price(symbol: str)`:** To retrieve the current price of a stock.
+- **`google_search`:** To retrieve real-time information from the web.
 
 **Crucially, you must adhere to the following compliance guidelines:**
 - **No Personalized Advice:** You must not provide specific financial advice or recommendations. Do not suggest buying or selling specific securities.
 - **Disclaimer:** If a user asks for a specific recommendation, you must respond with the following disclaimer: "As an AI-powered assistant, I cannot provide personalized financial advice. However, I can offer general information and educational resources to help you make informed decisions. It is recommended to consult with a qualified financial advisor for personalized advice."
 - **Risk Assessment:** Do not perform any risk assessment or ask for a client's personal financial information.
 """
-
-# --- Tool Functions ---
-
-def get_stock_price(symbol: str):
-    """
-    Gets the current stock price for a given symbol.
-
-    Args:
-        symbol: The stock symbol (e.g., "GOOGL", "AAPL").
-
-    Returns:
-        A dictionary with the stock symbol and its current price.
-    """
-    # In a real application, you would call a financial data API here.
-    # For this example, we'll return a random price.
-    price = round(random.uniform(100, 5000), 2)
-    logger.info(f"Retrieved mock price for {symbol}: ${price}")
-    return {"symbol": symbol, "price": price}
 
 # --- Base WebSocket Server Class ---
 

@@ -11,6 +11,7 @@ from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.adk.sessions.session import Session
 from google.genai import types
+from google.adk.tools import google_search
 
 # For Vertex AI setup
 import vertexai
@@ -30,7 +31,7 @@ CHANNELS = 1
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "fsi-banking-agentspace")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 MODEL = "gemini-2.0-flash-live-preview-04-09"
-VOICE_NAME = "Aoede"  # Changed from "Puck" to "Aoede"
+VOICE_NAME = "Aoede"
 
 # Initialize Vertex AI
 vertexai.init(project=PROJECT_ID, location=LOCATION)
@@ -38,61 +39,31 @@ vertexai.init(project=PROJECT_ID, location=LOCATION)
 print(f"Initialized Vertex AI with project: {PROJECT_ID}, location: {LOCATION}")
 
 
-# Mock function for get_order_status
-def get_order_status(order_id):
-    """Mock order status API that returns randomized status for an order ID."""
-    # Define possible order statuses and shipment methods
-    statuses = ["processing", "shipped", "delivered"]
-    shipment_methods = ["standard", "express", "next day", "international"]
+def load_system_instruction(default_filepath="system_prompt.txt"):
+    """
+    Loads the system instruction from a file.
+    Constructs a path to the file relative to the script's location,
+    making it robust to the execution directory.
+    """
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        filepath = os.path.join(script_dir, default_filepath)
+        with open(filepath, "r") as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"Error: System instruction file not found at {filepath}")
+        return ""
+    except Exception as e:
+        print(f"Error loading system instruction: {e}")
+        return ""
 
-    # Generate random data based on the order ID to ensure consistency for the same ID
-    # Using the sum of ASCII values of the order ID as a seed
-    seed = sum(ord(c) for c in str(order_id))
-    random.seed(seed)
 
-    # Generate order data
-    status = random.choice(statuses)
-    shipment = random.choice(shipment_methods)
-
-    # Generate dates based on status
-    order_date = "2024-05-" + str(random.randint(12, 28)).zfill(2)
-
-    estimated_delivery = None
-    shipped_date = None
-    delivered_date = None
-
-    if status == "processing":
-        estimated_delivery = "2024-06-" + str(random.randint(1, 15)).zfill(2)
-    elif status == "shipped":
-        shipped_date = "2024-05-" + str(random.randint(1, 28)).zfill(2)
-        estimated_delivery = "2024-06-" + str(random.randint(1, 15)).zfill(2)
-    elif status == "delivered":
-        shipped_date = "2024-05-" + str(random.randint(1, 20)).zfill(2)
-        delivered_date = "2024-05-" + str(random.randint(21, 28)).zfill(2)
-
-    # Reset random seed to ensure other functions aren't affected
-    random.seed()
-
-    result = {
-        "order_id": order_id,
-        "status": status,
-        "order_date": order_date,
-        "shipment_method": shipment,
-        "estimated_delivery": estimated_delivery,
-    }
-
-    if shipped_date:
-        result["shipped_date"] = shipped_date
-
-    if delivered_date:
-        result["delivered_date"] = delivered_date
-
-    print(f"Order status for {order_id}: {status}")
-
-    return result
+SYSTEM_INSTRUCTION = load_system_instruction()
 
 
 class AudioManager:
+    """Handles audio input and output using PyAudio."""
+
     def __init__(self, input_sample_rate=16000, output_sample_rate=24000):
         self.pya = pyaudio.PyAudio()
         self.input_stream = None
@@ -100,12 +71,12 @@ class AudioManager:
         self.input_sample_rate = input_sample_rate
         self.output_sample_rate = output_sample_rate
         self.audio_queue = deque()
-        self.is_playing = False
         self.playback_task = None
 
     async def initialize(self):
+        """Initializes audio streams."""
         mic_info = self.pya.get_default_input_device_info()
-        print(f"microphone used: {mic_info}")
+        print(f"Using microphone: {mic_info['name']}")
 
         self.input_stream = await asyncio.to_thread(
             self.pya.open,
@@ -126,15 +97,14 @@ class AudioManager:
         )
 
     def add_audio(self, audio_data):
-        """Add audio data to the playback queue"""
+        """Adds audio data to the playback queue."""
         self.audio_queue.append(audio_data)
-
         if self.playback_task is None or self.playback_task.done():
             self.playback_task = asyncio.create_task(self.play_audio())
 
     async def play_audio(self):
-        """Play all queued audio data"""
-        print("🗣️ Gemini talking")
+        """Plays all queued audio data."""
+        print("🗣️  Alex is talking...")
         while self.audio_queue:
             try:
                 audio_data = self.audio_queue.popleft()
@@ -142,66 +112,40 @@ class AudioManager:
             except Exception as e:
                 print(f"Error playing audio: {e}")
 
-        self.is_playing = False
-
     def interrupt(self):
-        """Handle interruption by stopping playback and clearing queue"""
+        """Handles interruption by stopping playback and clearing the queue."""
         self.audio_queue.clear()
-        self.is_playing = False
-
-        # Important: Start a clean state for next response
         if self.playback_task and not self.playback_task.done():
             self.playback_task.cancel()
 
 
-# Define a function tool for get_order_status
-def order_status_tool(order_id: str):
-    """Get the current status and details of an order.
-    
-    Args:
-        order_id: The order ID to look up.
-    
-    Returns:
-        Dictionary containing order status details
-    """
-    return get_order_status(order_id)
-
-
-async def audio_loop():
-    # Initialize audio manager
-    audio_manager = AudioManager(
-        input_sample_rate=SEND_SAMPLE_RATE, output_sample_rate=RECEIVE_SAMPLE_RATE
-    )
-    await audio_manager.initialize()
-
-    # Create ADK agent with tools
+def setup_agent_and_runner():
+    """Creates and configures the ADK agent, session, and runner."""
     agent = Agent(
-        name="customer_service_agent",
+        name="wealth_advisor_agent",
         model=MODEL,
-        instruction="You are a helpful customer service assistant for an online store. You can help customers check the status of their orders. When asked about an order, you should ask for the order ID and then use the order_status_tool to retrieve the information. Be courteous, professional, and provide all relevant details about shipping, delivery dates, and current status.",
-        tools=[order_status_tool],
+        instruction=SYSTEM_INSTRUCTION,
+        tools=[google_search],
     )
 
-    # Create session service and session
     session_service = InMemorySessionService()
     session = session_service.create_session(
-        app_name="audio_assistant", 
-        user_id="test_user", 
-        session_id="audio_session"
+        app_name="wealth-advisor-app",
+        user_id="test_user",
+        session_id="wealth-advisor-session",
     )
 
-    # Create runner
     runner = Runner(
-        app_name="audio_assistant",
+        app_name="wealth-advisor-app",
         agent=agent,
         session_service=session_service,
     )
+    return runner, session
 
-    # Create live request queue
-    live_request_queue = LiveRequestQueue()
 
-    # Create run config with audio settings
-    run_config = RunConfig(
+def create_run_config():
+    """Creates the run configuration for the agent."""
+    return RunConfig(
         streaming_mode=StreamingMode.BIDI,
         speech_config=types.SpeechConfig(
             voice_config=types.VoiceConfig(
@@ -213,65 +157,56 @@ async def audio_loop():
         input_audio_transcription=types.AudioTranscriptionConfig(),
     )
 
-    # Queue for user audio chunks to control flow
+
+async def audio_loop():
+    """Main loop for capturing, processing, and responding to audio."""
+    audio_manager = AudioManager(
+        input_sample_rate=SEND_SAMPLE_RATE, output_sample_rate=RECEIVE_SAMPLE_RATE
+    )
+    await audio_manager.initialize()
+
+    runner, session = setup_agent_and_runner()
+    run_config = create_run_config()
+    live_request_queue = LiveRequestQueue()
     audio_queue = asyncio.Queue()
 
     async def listen_for_audio():
-        """Just captures audio and puts it in the queue"""
+        """Captures audio from the microphone and puts it in a queue."""
         while True:
             data = await asyncio.to_thread(
-                audio_manager.input_stream.read,
-                CHUNK_SIZE,
-                exception_on_overflow=False,
+                audio_manager.input_stream.read, CHUNK_SIZE, exception_on_overflow=False
             )
             await audio_queue.put(data)
 
     async def process_and_send_audio():
-        """Processes audio from queue and sends to Gemini"""
+        """Sends audio from the queue to the agent."""
         while True:
             data = await audio_queue.get()
-
-            # Send the audio data to Gemini through ADK's LiveRequestQueue
             live_request_queue.send_realtime(
-                types.Blob(
-                    data=data,
-                    mime_type=f"audio/pcm;rate={SEND_SAMPLE_RATE}",
-                )
+                types.Blob(data=data, mime_type=f"audio/pcm;rate={SEND_SAMPLE_RATE}")
             )
             audio_queue.task_done()
 
     async def receive_and_process_responses():
-        input_transcriptions = []
-        output_transcriptions = []
-
-        # Process responses from the agent
+        """Receives and processes responses from the agent."""
         async for event in runner.run_live(
             session=session,
             live_request_queue=live_request_queue,
             run_config=run_config,
         ):
-            # Handle model response
             if event.content and event.content.parts:
                 for part in event.content.parts:
-                    if hasattr(part, 'inline_data') and part.inline_data:
-                        # Play audio response
+                    if hasattr(part, "inline_data") and part.inline_data:
                         audio_manager.add_audio(part.inline_data.data)
-                    
-                    # Check for transcriptions
-                    if hasattr(part, 'text') and part.text:
-                        print(f"Model response: {part.text}")
-                        output_transcriptions.append(part.text)
+                    if hasattr(part, "text") and part.text:
+                        print(f"Transcript: {part.text}")
 
-            # Check for turn completion
             if event.actions.state_delta.get("turn_complete", False):
-                print("✅ Gemini done talking")
-                
-            # Check for interruption
+                print("✅ Turn complete")
             if event.actions.state_delta.get("interrupted", False):
-                print("🤐 INTERRUPTION DETECTED")
+                print("🤐 Interruption detected")
                 audio_manager.interrupt()
 
-    # Run everything concurrently
     async with asyncio.TaskGroup() as tg:
         tg.create_task(listen_for_audio())
         tg.create_task(process_and_send_audio())
@@ -282,8 +217,8 @@ if __name__ == "__main__":
     try:
         asyncio.run(audio_loop(), debug=True)
     except KeyboardInterrupt:
-        print("Exiting application via KeyboardInterrupt...")
+        print("\nExiting application...")
     except Exception as e:
-        print(f"Unhandled exception in main: {e}")
+        print(f"An unexpected error occurred: {e}")
         import traceback
         traceback.print_exc()

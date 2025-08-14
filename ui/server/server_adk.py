@@ -9,6 +9,7 @@ from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.genai import types
 from dotenv import load_dotenv
+from google.adk.tools import google_search
 
 load_dotenv()
 
@@ -20,21 +21,7 @@ from common import (
     VOICE_NAME,
     SEND_SAMPLE_RATE,
     SYSTEM_INSTRUCTION,
-    get_order_status,
 )
-
-
-# Function tool for order status
-def order_status_tool(order_id: str):
-    """Get the current status and details of an order.
-
-    Args:
-        order_id: The order ID to look up.
-
-    Returns:
-        Dictionary containing order status details
-    """
-    return get_order_status(order_id)
 
 
 class ADKWebSocketServer(BaseWebSocketServer):
@@ -45,10 +32,10 @@ class ADKWebSocketServer(BaseWebSocketServer):
 
         # Initialize ADK components
         self.agent = Agent(
-            name="customer_service_agent",
+            name="wealth_advisor_agent",
             model=MODEL,
             instruction=SYSTEM_INSTRUCTION,
-            tools=[order_status_tool],
+            tools=[google_search],
         )
 
         # Create session service
