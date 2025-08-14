@@ -198,6 +198,7 @@
                     </svg>
                     <span>Citigold Wealth Advisor</span>
                 </div>
+                <div id="connection-status" class="text-xs text-right">Connecting...</div>
             </div>
 
             <div id="session-id-display" class="text-xs text-center bg-opacity-80 bg-black p-2 text-gray-400 border-t border-b border-gray-700">
@@ -244,13 +245,12 @@
     <script src="audio-client.js"></script>
 
     <script>
-        const audioClient = new AudioClient('wss://adk-audio-assistant-234439745674.us-central1.run.app');
-        let isRecording = false;
-
         const micButton = document.getElementById('mic-button-container');
         const endCallButton = document.getElementById('endCallButton');
         const chatMessages = document.getElementById('chat-messages');
         const audioIndicator = document.getElementById('audio-indicator');
+        let audioClient;
+        let isRecording = false;
 
         micButton.addEventListener('click', () => {
             if (isRecording) {
@@ -265,84 +265,118 @@
                 stopRecording();
             }
             addMessage("Call ended. How else can I help you?", "assistant");
-            audioClient.close();
+            if (audioClient) {
+                audioClient.close();
+            }
             initializeAudioClient();
         });
 
         async function initializeAudioClient() {
-            try {
+            // Create a new instance for a clean start
+            audioClient = new AudioClient('wss://your-production-service-url.run.app');
+
+            let currentResponseText = '';
+            let currentResponseElement = null;
+
+            // Add event listeners instead of assigning callbacks
+            audioClient.addEventListener('ready', () => {
+                console.log('Audio client ready');
+                updateConnectionStatus('Connected');
+            });
+
+            audioClient.addEventListener('connecting', () => {
+                updateConnectionStatus('Connecting...');
+            });
+
+            audioClient.addEventListener('reconnecting', (event) => {
+                updateConnectionStatus(`Reconnecting (Attempt ${event.detail})...`);
+            });
+
+            audioClient.addEventListener('disconnected', () => {
+                updateConnectionStatus('Disconnected');
+            });
+
+            audioClient.addEventListener('reconnect_failed', () => {
+                updateConnectionStatus('Reconnection Failed. Please refresh.');
+                addMessage("I'm sorry, I was unable to reconnect. Please check your internet connection and refresh the page.", "assistant");
+            });
+
+            audioClient.addEventListener('session_id', (event) => {
+                const sessionId = event.detail;
                 const sessionIdText = document.getElementById('session-id-text');
                 const sessionIdDisplay = document.getElementById('session-id-display');
 
                 if (sessionIdText && sessionIdDisplay) {
-                    sessionIdText.textContent = 'Waiting for session...';
-                    sessionIdDisplay.classList.remove('text-yellow-300');
-                    sessionIdDisplay.classList.add('text-gray-400');
+                    sessionIdText.textContent = `Session ID: ${sessionId}`;
+                    sessionIdDisplay.classList.remove('text-gray-400');
+                    sessionIdDisplay.classList.add('text-yellow-300');
                 }
+            });
 
+            audioClient.addEventListener('audio', (event) => {
+                audioIndicator.classList.remove('hidden');
+            });
+
+            audioClient.addEventListener('text', (event) => {
+                const text = event.detail;
+                if (text && text.trim()) {
+                    if (!currentResponseElement || !document.body.contains(currentResponseElement)) {
+                        currentResponseText = text;
+                        currentResponseElement = document.createElement('div');
+                        currentResponseElement.className = 'chat-message assistant-message';
+                        currentResponseElement.textContent = text;
+                        chatMessages.appendChild(currentResponseElement);
+                    } else {
+                        currentResponseText += ' ' + text.trim();
+                        currentResponseElement.textContent = currentResponseText;
+                    }
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            });
+
+            audioClient.addEventListener('turn_complete', () => {
+                audioIndicator.classList.add('hidden');
+                currentResponseText = '';
+                currentResponseElement = null;
+            });
+
+            audioClient.addEventListener('error', (event) => {
+                console.error('Audio client error:', event.detail);
+                addMessage("Sorry, I encountered an error. Please try again.", "assistant");
+                currentResponseText = '';
+                currentResponseElement = null;
+                updateConnectionStatus('Error');
+            });
+
+            audioClient.addEventListener('interrupted', () => {
+                console.log('Interruption detected, stopping audio playback');
+                audioIndicator.classList.add('hidden');
+                audioClient.interrupt();
+                currentResponseText = '';
+                currentResponseElement = null;
+            });
+
+            try {
                 await audioClient.connect();
-
-                let currentResponseText = '';
-                let currentResponseElement = null;
-
-                audioClient.onReady = () => {
-                    console.log('Audio client ready');
-                };
-
-                audioClient.onSessionIdReceived = (sessionId) => {
-                    const sessionIdText = document.getElementById('session-id-text');
-                    const sessionIdDisplay = document.getElementById('session-id-display');
-
-                    if (sessionIdText && sessionIdDisplay) {
-                        sessionIdText.textContent = `Session ID: ${sessionId}`;
-                        sessionIdDisplay.classList.remove('text-gray-400');
-                        sessionIdDisplay.classList.add('text-yellow-300');
-                    }
-                };
-
-                audioClient.onAudioReceived = (audioData) => {
-                    audioIndicator.classList.remove('hidden');
-                };
-
-                audioClient.onTextReceived = (text) => {
-                    if (text && text.trim()) {
-                        if (!currentResponseElement || !document.body.contains(currentResponseElement)) {
-                            currentResponseText = text;
-                            currentResponseElement = document.createElement('div');
-                            currentResponseElement.className = 'chat-message assistant-message';
-                            currentResponseElement.textContent = text;
-                            chatMessages.appendChild(currentResponseElement);
-                        } else {
-                            currentResponseText += ' ' + text.trim();
-                            currentResponseElement.textContent = currentResponseText;
-                        }
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
-                };
-
-                audioClient.onTurnComplete = () => {
-                    audioIndicator.classList.add('hidden');
-                    currentResponseText = '';
-                    currentResponseElement = null;
-                };
-
-                audioClient.onError = (error) => {
-                    console.error('Audio client error:', error);
-                    addMessage("Sorry, I encountered an error. Please try again.", "assistant");
-                    currentResponseText = '';
-                    currentResponseElement = null;
-                };
-
-                audioClient.onInterrupted = () => {
-                    console.log('Interruption detected, stopping audio playback');
-                    audioIndicator.classList.add('hidden');
-                    audioClient.interrupt();
-                    currentResponseText = '';
-                    currentResponseElement = null;
-                };
             } catch (error) {
                 console.error('Failed to initialize audio client:', error);
+                updateConnectionStatus('Connection Failed');
                 addMessage("Sorry, I'm having trouble connecting. Please try again later.", "assistant");
+            }
+        }
+
+        function updateConnectionStatus(status) {
+            const statusDisplay = document.getElementById('connection-status');
+            if (statusDisplay) {
+                statusDisplay.textContent = status;
+                statusDisplay.classList.remove('text-green-400', 'text-yellow-400', 'text-red-400');
+                if (status === 'Connected') {
+                    statusDisplay.classList.add('text-green-400');
+                } else if (status.startsWith('Reconnecting') || status === 'Connecting...') {
+                    statusDisplay.classList.add('text-yellow-400');
+                } else {
+                    statusDisplay.classList.add('text-red-400');
+                }
             }
         }
 
@@ -360,6 +394,7 @@
         }
 
         function stopRecording() {
+            if (!isRecording) return;
             audioClient.stopRecording();
             isRecording = false;
             micButton.classList.remove('mic-active');
@@ -367,6 +402,8 @@
             if (tempMessages.length > 0) {
                 const lastMessage = tempMessages[tempMessages.length - 1];
                 if (lastMessage.textContent === '...') {
+                    // This is where we would replace "..." with the actual user transcript
+                    // For now, just removing it.
                     lastMessage.remove();
                 }
             }
@@ -380,9 +417,7 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        window.addEventListener('load', () => {
-            initializeAudioClient();
-        });
+        window.addEventListener('load', initializeAudioClient);
     </script>
 </body>
 </html>

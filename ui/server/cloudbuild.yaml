@@ -16,11 +16,11 @@ steps:
 
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/adk-audio-assistant/audio-assistant:latest', '.']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/adk-audio-assistant/audio-assistant:$SHORT_SHA', '.']
 
   # Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/adk-audio-assistant/audio-assistant:latest']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/adk-audio-assistant/audio-assistant:$SHORT_SHA']
 
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -29,17 +29,17 @@ steps:
       - 'run'
       - 'deploy'
       - 'adk-audio-assistant'
-      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/adk-audio-assistant/audio-assistant:latest'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/adk-audio-assistant/audio-assistant:$SHORT_SHA'
       - '--region=us-central1'
       - '--platform=managed'
-      - '--port=8765'
+      - '--port=8080'
       - '--allow-unauthenticated'
-      - '--memory=2Gi'
-      - '--cpu=2'
+      - '--memory=1Gi'
+      - '--cpu=1'
       - '--min-instances=1'
       - '--max-instances=10'
       - '--session-affinity'
       - '--set-env-vars=GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1'
 
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/adk-audio-assistant/audio-assistant:latest'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/adk-audio-assistant/audio-assistant:$SHORT_SHA'

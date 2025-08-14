@@ -1,9 +1,10 @@
 /**
  * Audio processing client for bidirectional audio AI communication
+ * Refactored to use an event emitter pattern for robust state management.
  */
-
-class AudioClient {
+class AudioClient extends EventTarget {
     constructor(serverUrl = 'ws://localhost:8765') {
+        super();
         this.serverUrl = serverUrl;
         this.ws = null;
         this.recorder = null;
@@ -14,15 +15,6 @@ class AudioClient {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 3;
         this.sessionId = null;
-
-        // Callbacks
-        this.onReady = () => {};
-        this.onAudioReceived = () => {};
-        this.onTextReceived = () => {};
-        this.onTurnComplete = () => {};
-        this.onError = () => {};
-        this.onInterrupted = () => {};
-        this.onSessionIdReceived = (sessionId) => {};
 
         // Audio playback
         this.audioQueue = [];
@@ -46,7 +38,6 @@ class AudioClient {
     
     // Connect to the WebSocket server
     async connect() {
-        // Close existing connection if any
         if (this.ws) {
             try {
                 this.ws.close();
@@ -55,121 +46,72 @@ class AudioClient {
             }
         }
 
-        // Reset reconnect attempts if this is a new connection
-        if (this.reconnectAttempts > this.maxReconnectAttempts) {
-            this.reconnectAttempts = 0;
-        }
+        this.dispatchEvent(new Event('connecting'));
 
         return new Promise((resolve, reject) => {
-            try {
-                this.ws = new WebSocket(this.serverUrl);
+            this.ws = new WebSocket(this.serverUrl);
 
-                const connectionTimeout = setTimeout(() => {
-                    if (!this.isConnected) {
-                        console.error('WebSocket connection timed out');
-                        this.tryReconnect();
-                        reject(new Error('Connection timeout'));
-                    }
-                }, 5000);
+            this.ws.onopen = () => {
+                console.log('WebSocket connection established');
+                this.reconnectAttempts = 0;
+            };
 
-                this.ws.onopen = () => {
-                    console.log('WebSocket connection established');
-                    clearTimeout(connectionTimeout);
-                    this.reconnectAttempts = 0; // Reset on successful connection
-                };
+            this.ws.onclose = (event) => {
+                console.log('WebSocket connection closed:', event.code, event.reason);
+                this.isConnected = false;
+                this.dispatchEvent(new Event('disconnected'));
+                if (event.code!== 1000 && event.code!== 1001) {
+                    this.tryReconnect();
+                }
+            };
 
-                this.ws.onclose = (event) => {
-                    console.log('WebSocket connection closed:', event.code, event.reason);
-                    this.isConnected = false;
-
-                    // Try to reconnect if it wasn't a normal closure
-                    if (event.code !== 1000 && event.code !== 1001) {
-                        this.tryReconnect();
-                    }
-                };
-
-                this.ws.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                    clearTimeout(connectionTimeout);
-                    this.onError(error);
-                    reject(error);
-                };
-
-                this.ws.onmessage = async (event) => {
-                    try {
-                        // Log raw message data to help debug
-                        console.log('Raw WebSocket message received:', event.data);
-
-                        const message = JSON.parse(event.data);
-
-                        if (message.type === 'ready') {
-                            this.isConnected = true;
-                            this.onReady();
-                            resolve();
-                        }
-                        else if (message.type === 'audio') {
-                            // Handle receiving audio data from server
-                            const audioData = message.data;
-                            this.onAudioReceived(audioData);
-                            await this.playAudio(audioData);
-                        }
-                        else if (message.type === 'text') {
-                            // Handle receiving text from server
-                            this.onTextReceived(message.data);
-                        }
-                        else if (message.type === 'turn_complete') {
-                            // Model is done speaking
-                            this.isModelSpeaking = false;
-                            this.onTurnComplete();
-                        }
-                        else if (message.type === 'interrupted') {
-                            // Response was interrupted
-                            this.isModelSpeaking = false;
-                            this.onInterrupted(message.data);
-                        }
-                        else if (message.type === 'error') {
-                            // Handle server error
-                            this.onError(message.data);
-                        }
-                        else if (message.type === 'session_id') {
-                            // Handle session ID
-                            console.log('Received session ID message:', message);
-                            this.sessionId = message.data;
-                            this.onSessionIdReceived(message.data);
-                        }
-                    } catch (error) {
-                        console.error('Error processing message:', error);
-                    }
-                };
-            } catch (error) {
-                console.error('Error creating WebSocket:', error);
+            this.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                this.dispatchEvent(new CustomEvent('error', { detail: error }));
                 reject(error);
-            }
+            };
+
+            this.ws.onmessage = async (event) => {
+                const message = JSON.parse(event.data);
+                if (message.type === 'ready') {
+                    this.isConnected = true;
+                    resolve();
+                }
+                if (message.type === 'audio') {
+                    await this.playAudio(message.data);
+                }
+                if (message.type === 'turn_complete') {
+                    this.isModelSpeaking = false;
+                }
+                if (message.type === 'interrupted') {
+                    this.isModelSpeaking = false;
+                }
+                // Use dispatchEvent instead of direct callbacks
+                this.dispatchEvent(new CustomEvent(message.type, { detail: message.data }));
+            };
         });
     }
 
-    // Try to reconnect with exponential backoff
     async tryReconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             console.error('Max reconnection attempts reached');
+            this.dispatchEvent(new Event('reconnect_failed'));
             return;
         }
-
         this.reconnectAttempts++;
         const backoffTime = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
 
-        console.log(`Attempting to reconnect in ${backoffTime}ms (attempt ${this.reconnectAttempts})`);
+        this.dispatchEvent(new CustomEvent('reconnecting', { detail: this.reconnectAttempts }));
 
         setTimeout(async () => {
             try {
                 await this.connect();
-                console.log('Reconnected successfully');
             } catch (error) {
-                console.error('Reconnection failed:', error);
+                // The onclose handler will trigger the next attempt
             }
         }, backoffTime);
     }
-    
+
     // Initialize the audio context and recorder
     async initializeAudio() {
         try {
@@ -231,7 +173,7 @@ class AudioClient {
             return true;
         } catch (error) {
             console.error('Error initializing audio:', error);
-            this.onError(error);
+            this.dispatchEvent(new CustomEvent('error', { detail: error }));
             return false;
         }
     }

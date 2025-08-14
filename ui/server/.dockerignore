@@ -1,0 +1,22 @@
+# Exclude files and directories from the Docker build context
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# Environment files
+.env*
+
+# IDE / Editor specific
+.idea/
+.vscode/
+*.swp

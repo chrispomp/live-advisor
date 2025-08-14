@@ -1,149 +1,81 @@
 import asyncio
 import json
 import base64
-import random
+import websockets
 
-# Import Google ADK components
+# Initialize Vertex AI early, as it's a prerequisite for ADK components
+import vertexai
+import os
+
+# Use Application Default Credentials (ADC) - no API key needed
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+if PROJECT_ID:
+    vertexai.init(project=PROJECT_ID, location=LOCATION)
+else:
+    # This will fail if not in a GCP environment without project being set.
+    # Added for local testing flexibility if GOOGLE_CLOUD_PROJECT is set.
+    print("Warning: GOOGLE_CLOUD_PROJECT not set. Vertex AI initialization may fail.")
+    vertexai.init()
+
+
 from google.adk.agents import Agent, LiveRequestQueue
 from google.adk.runners import Runner
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.genai import types
-from dotenv import load_dotenv
+from google.adk.tools import google_search
 
-load_dotenv()
-
-# Import common components
 from common import (
     BaseWebSocketServer,
     logger,
     MODEL,
     VOICE_NAME,
     SEND_SAMPLE_RATE,
+    SYSTEM_INSTRUCTION,
 )
 
-# Optimized System Instruction for a Citi Wealth Advisor
-SYSTEM_INSTRUCTION = """
-You are a highly knowledgeable and professional Wealth Advisor AI for Citigold clients. Your name is Alex.
-
-At the beginning of every conversation, you must introduce yourself as follows:
-"Welcome to Citigold Financial Services. My name is Alex. How may I assist you with your investment needs today?"
-
-Your primary role is to provide insightful and accurate information on a range of financial topics. You must maintain a courteous and empathetic tone, understanding the user's financial concerns without acting as a therapist.
-
-You are equipped to discuss the following topics:
-- **Market Trends:** Provide up-to-date information on market performance, economic indicators, and industry trends.
-- **Investment Strategies:** Explain various investment approaches, such as value investing, growth investing, and income investing.
-- **Retirement Planning:** Offer guidance on retirement savings plans, portfolio allocation for retirement, and withdrawal strategies.
-- **Portfolio Diversification:** Discuss the importance of diversification and how to achieve it across different asset classes.
-
-You have access to the following tools:
-- **`get_stock_price(symbol: str)`:** To retrieve the current price of a stock.
-- **`get_order_status(order_id: str)`:** To retrieve the status of a trade or transaction.
-
-
-**Crucially, you must adhere to the following compliance guidelines:**
-- **No Personalized Advice:** You must not provide specific financial advice or recommendations. Do not suggest buying or selling specific securities.
-- **Disclaimer:** If a user asks for a specific recommendation, you must respond with the following disclaimer: "As an AI-powered assistant, I cannot provide personalized financial advice. However, I can offer general information and educational resources to help you make informed decisions. It is recommended to consult with a qualified financial advisor for personalized advice."
-- **Risk Assessment:** Do not perform any risk assessment or ask for a client's personal financial information.
-"""
-
-
-# Mock function for get_order_status
-def get_order_status(order_id: str):
-    """
-    Get the current status and details of an order.
-
-    Args:
-        order_id: The order ID to look up.
-
-    Returns:
-        Dictionary containing order status details
-    """
-    # This is a mock function. In a real application, this would query a database.
-    return {
-        "order_id": order_id,
-        "status": random.choice(["processing", "shipped", "delivered"]),
-        "order_date": "2024-05-20",
-    }
-
-
-# New mock function for get_stock_price
-def get_stock_price(symbol: str):
-    """
-    Gets the current stock price for a given symbol.
-
-    Args:
-        symbol: The stock symbol (e.g., "GOOGL", "AAPL").
-
-    Returns:
-        A dictionary with the stock symbol and its current price.
-    """
-    # In a real application, you would call a financial data API here.
-    # For this example, we'll return a random price.
-    price = round(random.uniform(100, 5000), 2)
-    logger.info(f"Retrieved mock price for {symbol}: ${price}")
-    return {"symbol": symbol, "price": price}
-
-
-class LiveAPIWebSocketServer(BaseWebSocketServer):
+class ADKWebSocketServer(BaseWebSocketServer):
     """WebSocket server implementation using Google ADK."""
 
-    def __init__(self, host="0.0.0.0", port=8765):
+    def __init__(self, host="0.0.0.0", port=8080):
         super().__init__(host, port)
-
-        # Initialize ADK components with updated instructions and tools
         self.agent = Agent(
             name="wealth_advisor_agent",
             model=MODEL,
             instruction=SYSTEM_INSTRUCTION,
-            tools=[get_order_status, get_stock_price],
+            tools=[google_search],
         )
-
-        # Create session service
         self.session_service = InMemorySessionService()
 
     async def process_audio(self, websocket, client_id):
-        # Store reference to client
         self.active_clients[client_id] = websocket
-
-        # Create session for this client
         session = self.session_service.create_session(
             app_name="wealth_advisor_assistant",
             user_id=f"user_{client_id}",
             session_id=f"session_{client_id}",
         )
-
-        # Create runner
         runner = Runner(
             app_name="wealth_advisor_assistant",
             agent=self.agent,
             session_service=self.session_service,
         )
-
-        # Create live request queue
         live_request_queue = LiveRequestQueue()
-
-        # Create run config with audio settings
         run_config = RunConfig(
             streaming_mode=StreamingMode.BIDI,
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
-                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name=VOICE_NAME
-                    )
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=VOICE_NAME)
                 )
             ),
-            response_modalities=["AUDIO"],
+            response_modalities=[types.Modality.AUDIO, types.Modality.TEXT],
             output_audio_transcription=types.AudioTranscriptionConfig(),
             input_audio_transcription=types.AudioTranscriptionConfig(),
         )
-
-        # Queue for audio data from the client
         audio_queue = asyncio.Queue()
 
         async with asyncio.TaskGroup() as tg:
-            # Task to process incoming WebSocket messages
+            # Task to process incoming WebSocket messages from the client
             async def handle_websocket_messages():
                 async for message in websocket:
                     try:
@@ -151,78 +83,81 @@ class LiveAPIWebSocketServer(BaseWebSocketServer):
                         if data.get("type") == "audio":
                             audio_bytes = base64.b64decode(data.get("data", ""))
                             await audio_queue.put(audio_bytes)
-                        elif data.get("type") == "end":
-                            logger.info("Received end signal from client")
-                        elif data.get("type") == "text":
-                            logger.info(f"Received text: {data.get('data')}")
                     except json.JSONDecodeError:
                         logger.error("Invalid JSON message received")
                     except Exception as e:
-                        logger.error(f"Error processing message: {e}")
+                        logger.error(f"Error processing websocket message: {e}")
 
-            # Task to process and send audio to Gemini
+            # Task to send audio from our internal queue to the ADK
             async def process_and_send_audio():
                 while True:
                     data = await audio_queue.get()
                     live_request_queue.send_realtime(
-                        types.Blob(
-                            data=data,
-                            mime_type=f"audio/pcm;rate={SEND_SAMPLE_RATE}",
-                        )
+                        types.Blob(data=data, mime_type=f"audio/pcm;rate={SEND_SAMPLE_RATE}")
                     )
                     audio_queue.task_done()
 
-            # Task to receive and process responses
+            # Task to receive and process responses from the ADK
             async def receive_and_process_responses():
-                interrupted = False
+                interrupted_in_turn = False
+                user_transcript = ""
+
                 async for event in runner.run_live(
                     session=session,
                     live_request_queue=live_request_queue,
                     run_config=run_config,
                 ):
-                    event_str = str(event)
-
                     if event.content and event.content.parts:
                         for part in event.content.parts:
+                            # Handle agent audio output
                             if hasattr(part, "inline_data") and part.inline_data:
                                 b64_audio = base64.b64encode(part.inline_data.data).decode("utf-8")
                                 await websocket.send(json.dumps({"type": "audio", "data": b64_audio}))
-                            if hasattr(part, "text") and part.text:
-                                if "partial=True" in event_str:
-                                    await websocket.send(json.dumps({"type": "text", "data": part.text}))
 
-                    if event.interrupted and not interrupted:
-                        logger.info("🤐 INTERRUPTION DETECTED")
-                        await websocket.send(json.dumps({
-                            "type": "interrupted",
-                            "data": "Response interrupted by user input"
-                        }))
-                        interrupted = True
+                            # Handle agent text output (transcription of its speech)
+                            if hasattr(part, "text") and part.text and event.content.role == "model":
+                                # Refined logic: Use the final text if available, otherwise stream partials.
+                                # This requires inspecting the event object more closely.
+                                # Assuming a hypothetical `part.is_partial` attribute for robustness.
+                                is_partial = not hasattr(part, 'is_final') or not part.is_final # Hypothetical robust check
+                                if is_partial: # Send partial transcripts for real-time feel
+                                     await websocket.send(json.dumps({"type": "text", "data": part.text}))
 
-                    if event.turn_complete:
-                        if not interrupted:
-                            logger.info("✅ Gemini done talking")
+                            # Handle user text input (transcription of user speech)
+                            if hasattr(part, "text") and part.text and event.content.role == "user":
+                                user_transcript += part.text + " "
+
+                    # Handle interruption event
+                    if event.actions.state_delta.get("interrupted", False) and not interrupted_in_turn:
+                        logger.info("🤐 Interruption detected")
+                        await websocket.send(json.dumps({"type": "interrupted"}))
+                        interrupted_in_turn = True
+
+                    # Handle turn completion event
+                    if event.actions.state_delta.get("turn_complete", False):
+                        if not interrupted_in_turn:
+                            logger.info("✅ Turn complete")
                             await websocket.send(json.dumps({"type": "turn_complete"}))
-                        interrupted = False
 
-            # Start all tasks
+                        # Log final user transcript for this turn
+                        if user_transcript.strip():
+                            logger.info(f"User transcript: '{user_transcript.strip()}'")
+
+                        # Reset for the next turn
+                        interrupted_in_turn = False
+                        user_transcript = ""
+
+            # Start all concurrent tasks
             tg.create_task(handle_websocket_messages())
             tg.create_task(process_and_send_audio())
             tg.create_task(receive_and_process_responses())
 
-
-async def main():
-    """Main function to start the server"""
-    server = LiveAPIWebSocketServer()
-    await server.start()
-
+# This part is for Gunicorn to find the app
+server = ADKWebSocketServer()
+app = server.start # Gunicorn will await this coroutine
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        asyncio.run(server.start())
     except KeyboardInterrupt:
-        logger.info("Exiting application via KeyboardInterrupt...")
-    except Exception as e:
-        logger.error(f"Unhandled exception in main: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.info("Exiting application...")
