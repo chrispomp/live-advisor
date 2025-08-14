@@ -4,23 +4,24 @@ import base64
 import logging
 import websockets
 import traceback
+import random
 from websockets.exceptions import ConnectionClosed
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Constants
+# --- Constants ---
 PROJECT_ID = "fsi-banking-agentspace"
 LOCATION = "us-central1"
 MODEL = "gemini-2.0-flash-live-preview-04-09"
-VOICE_NAME = "Puck"
+VOICE_NAME = "Puck" # A professional and clear voice for the advisor
 
-# Audio sample rates for input/output
+# Audio sample rates
 RECEIVE_SAMPLE_RATE = 24000  # Rate of audio received from Gemini
 SEND_SAMPLE_RATE = 16000     # Rate of audio sent to Gemini
 
-# System instruction used by both implementations
+# --- Optimized System Instruction for a Citi Wealth Advisor ---
 SYSTEM_INSTRUCTION = """
 You are a highly knowledgeable and professional Wealth Advisor AI for Citigold clients. Your name is Alex.
 
@@ -44,7 +45,26 @@ You have access to the following tools:
 - **Risk Assessment:** Do not perform any risk assessment or ask for a client's personal financial information.
 """
 
-# Base WebSocket server class that handles common functionality
+# --- Tool Functions ---
+
+def get_stock_price(symbol: str):
+    """
+    Gets the current stock price for a given symbol.
+
+    Args:
+        symbol: The stock symbol (e.g., "GOOGL", "AAPL").
+
+    Returns:
+        A dictionary with the stock symbol and its current price.
+    """
+    # In a real application, this would call a financial data API.
+    # For this example, we'll return a random price.
+    price = round(random.uniform(100, 5000), 2)
+    logger.info(f"Retrieved mock price for {symbol}: ${price}")
+    return {"symbol": symbol, "price": price}
+
+# --- Base WebSocket Server Class ---
+
 class BaseWebSocketServer:
     def __init__(self, host="0.0.0.0", port=8765):
         self.host = host
@@ -73,7 +93,6 @@ class BaseWebSocketServer:
             logger.error(f"Error handling client {client_id}: {e}")
             logger.error(traceback.format_exc())
         finally:
-            # Clean up if needed
             if client_id in self.active_clients:
                 del self.active_clients[client_id]
 
@@ -83,18 +102,3 @@ class BaseWebSocketServer:
         subclasses must implement with their specific LLM integration.
         """
         raise NotImplementedError("Subclasses must implement process_audio")
-
-def get_stock_price(symbol: str):
-    """
-    Gets the current stock price for a given symbol.
-
-    Args:
-        symbol: The stock symbol (e.g., "GOOGL", "AAPL").
-
-    Returns:
-        A dictionary with the stock symbol and its current price.
-    """
-    # In a real application, you would call a financial data API here.
-    # For this example, we'll return a random price.
-    price = round(random.uniform(100, 5000), 2)
-    return {"symbol": symbol, "price": price}
