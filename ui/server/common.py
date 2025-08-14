@@ -57,7 +57,7 @@ def get_stock_price(symbol: str):
     Returns:
         A dictionary with the stock symbol and its current price.
     """
-    # In a real application, this would call a financial data API.
+    # In a real application, you would call a financial data API here.
     # For this example, we'll return a random price.
     price = round(random.uniform(100, 5000), 2)
     logger.info(f"Retrieved mock price for {symbol}: ${price}")
