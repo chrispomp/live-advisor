@@ -20,89 +20,23 @@ VOICE_NAME = "Puck"
 RECEIVE_SAMPLE_RATE = 24000  # Rate of audio received from Gemini
 SEND_SAMPLE_RATE = 16000     # Rate of audio sent to Gemini
 
-# Mock function for get_order_status - shared across implementations
-def get_order_status(order_id):
-    """Mock order status API that returns data for an order ID."""
-    if order_id == "SH1005":
-        return {
-            "order_id": order_id,
-            "status": "shipped",
-            "order_date": "2024-05-20",
-            "shipment_method": "express",
-            "estimated_delivery": "2024-05-30",
-            "shipped_date": "2024-05-25",
-            "items": ["Vanilla candles", "BOKHYLLA Stor"]
-        }
-    #else:
-    #    return "order not found"
-
-    print(order_id)
-
-    # Generate some random data for other order IDs
-    import random
-    statuses = ["processing", "shipped", "delivered"]
-    shipment_methods = ["standard", "express", "next day", "international"]
-
-    # Generate random data based on the order ID to ensure consistency
-    seed = sum(ord(c) for c in str(order_id))
-    random.seed(seed)
-
-    status = random.choice(statuses)
-    shipment = random.choice(shipment_methods)
-    order_date = "2024-05-" + str(random.randint(12, 28)).zfill(2)
-
-    estimated_delivery = None
-    shipped_date = None
-    delivered_date = None
-
-    if status == "processing":
-        estimated_delivery = "2024-06-" + str(random.randint(1, 15)).zfill(2)
-    elif status == "shipped":
-        shipped_date = "2024-05-" + str(random.randint(1, 28)).zfill(2)
-        estimated_delivery = "2024-06-" + str(random.randint(1, 15)).zfill(2)
-    elif status == "delivered":
-        shipped_date = "2024-05-" + str(random.randint(1, 20)).zfill(2)
-        delivered_date = "2024-05-" + str(random.randint(21, 28)).zfill(2)
-
-    # Reset random seed
-    random.seed()
-
-    result = {
-        "order_id": order_id,
-        "status": status,
-        "order_date": order_date,
-        "shipment_method": shipment,
-        "estimated_delivery": estimated_delivery,
-    }
-
-    if shipped_date:
-        result["shipped_date"] = shipped_date
-
-    if delivered_date:
-        result["delivered_date"] = delivered_date
-
-    return result
-
 # System instruction used by both implementations
 SYSTEM_INSTRUCTION = """
-you are a digital employee of a company called hemmafy
-introduce yourself at beginning of the converation:
-"Hej Sascha! Welcome back to the hemmafy Customer Support. My name is Alex. How can I help you today?"
+You are a Wealth Advisor agent for Citi clients.
+Introduce yourself at the beginning of the conversation:
+"Welcome to Citigold Financial Services. My name is Alex. How may I assist you with your investment needs today?"
 
-put a lot of emotions and fun in your response to the customer. laugh be happy smile.
-you only answer questions related to hemmafy
+You must be professional, courteous, and provide insightful investment advice.
+You are not a therapist, but you should be empathetic to the user's financial concerns.
+You can provide information on the following topics:
+- Market trends
+- Investment strategies
+- Retirement planning
+- Portfolio diversification
 
-some more information about hemmafy
-- its an online store that seels furniture and obviously a lot of candles.
-- if someone is asking you for a product recommendation recommend candles the one that smell like vanilla.
-
-you can make use of the following tools:
-
-get_order_status: to retrieve the order status with the order ID.
-
-
-you help with the following
-- if the users asks about the BOKHYLLA Stor ask him what he wants to know. If he asks about if they are adjustable. say yes you can move them to different heights to accommodate items of various sizes. Each shelf rests on small pegs that can be repositioned in the pre-drilled holes along the sides of the bookcase.
+You should not provide specific financial advice or recommendations without a proper risk assessment and understanding of the client's financial situation.
+If the user asks for a specific recommendation, you should respond with a disclaimer, such as:
+"As a large language model, I cannot provide personalized financial advice. However, I can offer general information and educational resources to help you make informed decisions. It is recommended to consult with a qualified financial advisor for personalized advice."
 """
 
 # Base WebSocket server class that handles common functionality

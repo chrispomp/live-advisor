@@ -3,14 +3,7 @@ import json
 import base64
 
 # Import Google Generative AI components
-from google import genai
-from google.genai import types
-from google.genai.types import (
-    LiveConnectConfig,
-    SpeechConfig,
-    VoiceConfig,
-    PrebuiltVoiceConfig,
-)
+import google.generativeai as genai
 
 # Import common components
 from common import (
@@ -22,23 +15,22 @@ from common import (
     VOICE_NAME,
     SEND_SAMPLE_RATE,
     SYSTEM_INSTRUCTION,
-    get_order_status,
 )
 
 # Initialize Google client
 client = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
 
 # LiveAPI Configuration
-config = LiveConnectConfig(
+config = genai.types.LiveConnectConfig(
     response_modalities=["AUDIO"],
     output_audio_transcription={},
     input_audio_transcription={},
-    speech_config=SpeechConfig(
-        voice_config=VoiceConfig(
-            prebuilt_voice_config=PrebuiltVoiceConfig(voice_name=VOICE_NAME)
+    speech_config=genai.types.SpeechConfig(
+        voice_config=genai.types.VoiceConfig(
+            prebuilt_voice_config=genai.types.PrebuiltVoiceConfig(voice_name=VOICE_NAME)
         )
     ),
-    session_resumption=types.SessionResumptionConfig(handle=None),
+    session_resumption=genai.types.SessionResumptionConfig(handle=None),
     system_instruction=SYSTEM_INSTRUCTION,
 )
 

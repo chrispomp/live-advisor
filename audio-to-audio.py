@@ -4,8 +4,7 @@ import pyaudio
 from collections import deque
 import random
 
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 PROJECT_ID = "sascha-playground-doit"
 LOCATION = "us-central1"
@@ -19,15 +18,6 @@ SEND_SAMPLE_RATE = 16000
 CHUNK_SIZE = 512
 CHANNELS = 1
 
-from google.genai.types import (
-    LiveConnectConfig,
-    SpeechConfig,
-    VoiceConfig,
-    PrebuiltVoiceConfig,
-    # added to allow for function calling / tooling
-    FunctionDeclaration,
-    Tool,
-)
 
 
 # Mock function for get_order_status
@@ -85,9 +75,9 @@ def get_order_status(order_id):
 
 
 # Define the order status tool
-order_status_tool = Tool(
+order_status_tool = genai.types.Tool(
     function_declarations=[
-        FunctionDeclaration(
+        genai.types.FunctionDeclaration(
             name="get_order_status",
             description="Get the current status and details of an order.",
             parameters={
@@ -105,7 +95,7 @@ order_status_tool = Tool(
 )
 
 
-CONFIG = LiveConnectConfig(
+CONFIG = genai.types.LiveConnectConfig(
     response_modalities=["AUDIO"],
     output_audio_transcription={},
     input_audio_transcription={},
@@ -114,9 +104,9 @@ CONFIG = LiveConnectConfig(
     # or else None to start a new session.
     # handle="93f6ae1d-2420-40e9-828c-776cf553b7a6"
     # ),
-    speech_config=SpeechConfig(
-        voice_config=VoiceConfig(
-            prebuilt_voice_config=PrebuiltVoiceConfig(voice_name="Puck")
+    speech_config=genai.types.SpeechConfig(
+        voice_config=genai.types.VoiceConfig(
+            prebuilt_voice_config=genai.types.PrebuiltVoiceConfig(voice_name="Puck")
         )
     ),
     system_instruction="You are a helpful customer service assistant for an online store. You can help customers check the status of their orders. When asked about an order, you should ask for the order ID and then use the get_order_status tool to retrieve the information. Be courteous, professional, and provide all relevant details about shipping, delivery dates, and current status.",

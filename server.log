@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/app/ui/server/server.py", line 21, in <module>
+    client = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
+             ^^^^^^^^^^^^
+AttributeError: module 'google.generativeai' has no attribute 'Client'
