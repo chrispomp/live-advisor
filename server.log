@@ -1,0 +1,5 @@
+/home/jules/.pyenv/versions/3.12.11/lib/python3.12/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "config_type" in "SequentialAgent" shadows an attribute in parent "BaseAgent"
+  warnings.warn(
+2025-08-15 03:11:34,485 - ERROR - Error: System instruction file not found at system_prompt.txt
+2025-08-15 03:11:34,486 - INFO - Starting WebSocket server on 0.0.0.0:8080
+2025-08-15 03:11:34,488 - INFO - server listening on 0.0.0.0:8080
