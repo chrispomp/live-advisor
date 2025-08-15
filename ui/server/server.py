@@ -23,8 +23,15 @@ from google.adk.agents import Agent, LiveRequestQueue
 from google.adk.runners import Runner
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
+# Import classes that remain in the generativeai library
 from google.generativeai import types as genai_types
-from google.adk.tools import google_search
+# Import classes that have moved to the aiplatform library
+from google.cloud.aiplatform_v1beta1.types import (
+    SpeechConfig,
+    VoiceConfig,
+    PrebuiltVoiceConfig,
+    Modality
+)
 from tools import (
     get_user_portfolio_summary,
     get_market_news_and_sentiment,
@@ -76,12 +83,12 @@ class ADKWebSocketServer(BaseWebSocketServer):
         live_request_queue = LiveRequestQueue()
         run_config = RunConfig(
             streaming_mode=StreamingMode.BIDI,
-            speech_config=genai_types.SpeechConfig(
-                voice_config=genai_types.VoiceConfig(
-                    prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(voice_name=VOICE_NAME)
+            speech_config=SpeechConfig(
+                voice_config=VoiceConfig(
+                    prebuilt_voice_config=PrebuiltVoiceConfig(voice_name=VOICE_NAME)
                 )
             ),
-            response_modalities=[genai_types.Modality.AUDIO, genai_types.Modality.TEXT],
+            response_modalities=[Modality.AUDIO, Modality.TEXT],
             output_audio_transcription=genai_types.AudioTranscriptionConfig(),
             input_audio_transcription=genai_types.AudioTranscriptionConfig(),
         )
