@@ -3,6 +3,7 @@ import json
 from alpha_vantage.timeseries import TimeSeries
 from google.cloud import bigquery
 from google.cloud import discoveryengine
+from google.cloud import aiplatform_v1beta1 as aiplatform # <-- FIX APPLIED HERE
 
 # --- Configuration ---
 # Assumes GOOGLE_CLOUD_PROJECT is set in the environment.

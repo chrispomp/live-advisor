@@ -21,10 +21,14 @@ SEND_SAMPLE_RATE = 16000     # Rate of audio sent to Gemini
 def load_system_instruction(filepath="system_prompt.txt"):
     """Loads the system instruction from a file."""
     try:
-        with open(filepath, "r") as f:
+        # Get the absolute path to the directory containing this script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Join the script directory with the filename to create an absolute path
+        file_path = os.path.join(script_dir, filepath)
+        with open(file_path, "r") as f:
             return f.read()
     except FileNotFoundError:
-        logger.error(f"Error: System instruction file not found at {filepath}")
+        logger.error(f"Error: System instruction file not found at {file_path}")
         return "" # Return empty string to prevent crash, though agent will be uninstructed
     except Exception as e:
         logger.error(f"Error loading system instruction: {e}")
