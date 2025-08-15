@@ -7,3 +7,4 @@ gunicorn==22.0.0
 uvicorn==0.34.0
 google-cloud-bigquery
 alpha-vantage
+google-cloud-discoveryengine

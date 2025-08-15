@@ -60,7 +60,7 @@ class ADKWebSocketServer(BaseWebSocketServer):
 
     async def process_audio(self, websocket, client_id):
         self.active_clients[client_id] = websocket
-        session = self.session_service.create_session(
+        session = await self.session_service.create_session(
             app_name="wealth_advisor_assistant",
             user_id=f"user_{client_id}",
             session_id=f"session_{client_id}",

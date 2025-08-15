@@ -2,7 +2,7 @@ import os
 import json
 from alpha_vantage.timeseries import TimeSeries
 from google.cloud import bigquery
-from google.cloud import aiplatform_v1beta1 as aiplatform
+from google.cloud import discoveryengine
 
 # --- Configuration ---
 # Assumes GOOGLE_CLOUD_PROJECT is set in the environment.
@@ -15,7 +15,7 @@ VERTEX_AI_SEARCH_DATASTORE_ID = os.getenv("VERTEX_AI_SEARCH_DATASTORE_ID", "citi
 # Initialize clients
 try:
     bq_client = bigquery.Client(project=PROJECT_ID)
-    vertex_ai_search_client = aiplatform.SearchServiceClient()
+    vertex_ai_search_client = discoveryengine.SearchServiceClient()
 except Exception as e:
     print(f"Warning: Could not initialize Google Cloud clients: {e}")
     bq_client = None

@@ -46,14 +46,7 @@ gcloud run deploy adk-audio-assistant \
   --image us-central1-docker.pkg.dev/YOUR_PROJECT_ID/adk-audio-assistant/audio-assistant:latest \
   --region us-central1 \
   --platform managed \
-  --port 8765 \
-  --allow-unauthenticated \
-  --memory 2Gi \
-  --cpu 2 \
-  --min-instances 1 \
-  --max-instances 10 \
-  --session-affinity \
-  --set-annotations=run.googleapis.com/websocket=true
+  --port 8080 \
 ```
 
 ### 3. Deploy Using Cloud Build
