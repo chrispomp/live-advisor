@@ -32,6 +32,8 @@ def load_system_instruction(filepath="system_prompt.txt"):
 
 SYSTEM_INSTRUCTION = load_system_instruction()
 
+MANDATORY_DISCLAIMER = "I am an AI assistant. My insights are for informational purposes only and should not be considered financial advice. Please consult with a qualified financial professional."
+
 # --- Base WebSocket Server Class ---
 class BaseWebSocketServer:
     def __init__(self, host="0.0.0.0", port=8080):

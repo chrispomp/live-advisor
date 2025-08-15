@@ -25,7 +25,11 @@ from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.genai import types
 from google.adk.tools import google_search
-
+from tools import (
+    get_user_portfolio_summary,
+    get_market_news_and_sentiment,
+    get_citi_perspective,
+)
 from common import (
     BaseWebSocketServer,
     logger,
@@ -44,7 +48,11 @@ class ADKWebSocketServer(BaseWebSocketServer):
             name="wealth_advisor_agent",
             model=MODEL,
             instruction=SYSTEM_INSTRUCTION,
-            tools=[google_search],
+            tools=[
+                get_user_portfolio_summary,
+                get_market_news_and_sentiment,
+                get_citi_perspective,
+            ],
         )
         self.session_service = InMemorySessionService()
 
