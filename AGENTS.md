@@ -48,6 +48,7 @@ export ALPHA_VANTAGE_API_KEY="6QRF1QS1W28T036V"
 export GOOGLE_CLOUD_LOCATION="us-central1"
 export BIGQUERY_DATASET="fsi-banking-agentspace.awm"
 export VERTEX_AI_SEARCH_DATASTORE_ID="your-datastore-id"
+export GOOGLE_GENAI_USE_VERTEXAI=TRUE
 export PORT=8080
 ```
 
