@@ -273,7 +273,7 @@
 
         async function initializeAudioClient() {
             // Create a new instance for a clean start
-            audioClient = new AudioClient('wss://your-production-service-url.run.app');
+            audioClient = new AudioClient('ws://localhost:8080');
 
             let currentResponseText = '';
             let currentResponseElement = null;
