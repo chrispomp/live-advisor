@@ -356,6 +356,16 @@
                 currentResponseElement = null;
             });
 
+            // New event listener for user transcript
+            audioClient.addEventListener('user_transcript', (event) => {
+                const transcript = event.detail;
+                const tempMessages = document.querySelectorAll('.user-message');
+                if (tempMessages.length > 0) {
+                    const lastMessage = tempMessages[tempMessages.length - 1];
+                    lastMessage.textContent = transcript;
+                }
+            });
+
             try {
                 await audioClient.connect();
             } catch (error) {
@@ -402,9 +412,8 @@
             if (tempMessages.length > 0) {
                 const lastMessage = tempMessages[tempMessages.length - 1];
                 if (lastMessage.textContent === '...') {
-                    // This is where we would replace "..." with the actual user transcript
-                    // For now, just removing it.
-                    lastMessage.remove();
+                    // The "..." will be replaced by the transcript from the server.
+                    // If no transcript is received, the "..." will remain.
                 }
             }
         }

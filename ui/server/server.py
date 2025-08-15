@@ -133,7 +133,9 @@ class ADKWebSocketServer(BaseWebSocketServer):
 
                             # Handle user text input (transcription of user speech)
                             if hasattr(part, "text") and part.text and event.content.role == "user":
-                                user_transcript += part.text + " "
+                                user_transcript += part.text
+                                # Send the partial transcript to the client for a more responsive feel
+                                await websocket.send(json.dumps({"type": "user_transcript", "data": user_transcript}))
 
                     # Handle interruption event
                     if event.actions.state_delta.get("interrupted", False) and not interrupted_in_turn:
