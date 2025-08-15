@@ -89,6 +89,7 @@ class ADKWebSocketServer(BaseWebSocketServer):
             ),
             response_modalities=["AUDIO", "TEXT"],
             output_audio_transcription=True,
+            session_resumption=google_genai_types.SessionResumptionConfig(),
         )
         audio_queue = asyncio.Queue()
 
