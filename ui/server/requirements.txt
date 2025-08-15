@@ -1,8 +1,8 @@
 # Pin dependencies to ensure reproducible builds and avoid breaking changes.
-websockets==15.0.1
-google-generativeai==0.7.1
-google-cloud-aiplatform==1.95.1
-google-adk==1.6.1
+websockets
+google-generativeai
+google-cloud-aiplatform
+google-adk
 gunicorn==22.0.0
 uvicorn==0.34.0
 google-cloud-bigquery

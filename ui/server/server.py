@@ -61,7 +61,13 @@ class ADKWebSocketServer(BaseWebSocketServer):
     async def process_audio(self, websocket, client_id):
         self.active_clients[client_id] = websocket
         
-        # Runner is initialized without a session object now
+        # Explicitly create the session so the runner can find it.
+        await self.session_service.create_session(
+            app_name="wealth_advisor_assistant",
+            user_id=f"user_{client_id}",
+            session_id=f"session_{client_id}",
+        )
+
         runner = Runner(
             app_name="wealth_advisor_assistant",
             agent=self.agent,
@@ -109,7 +115,7 @@ class ADKWebSocketServer(BaseWebSocketServer):
                 interrupted_in_turn = False
                 user_transcript = ""
 
-                # CORRECTED: Call run_live with user_id and session_id instead of a session object.
+                # CORRECTED: Call run_live with user_id and session_id.
                 async for event in runner.run_live(
                     user_id=f"user_{client_id}",
                     session_id=f"session_{client_id}",
@@ -166,3 +172,4 @@ if __name__ == "__main__":
         asyncio.run(server.start())
     except KeyboardInterrupt:
         logger.info("Exiting application...")
+
