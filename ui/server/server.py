@@ -23,7 +23,7 @@ from google.adk.agents import Agent, LiveRequestQueue
 from google.adk.runners import Runner
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
-from google.genai import types
+from google.generativeai import types as genai_types
 from google.adk.tools import google_search
 from tools import (
     get_user_portfolio_summary,
@@ -76,14 +76,14 @@ class ADKWebSocketServer(BaseWebSocketServer):
         live_request_queue = LiveRequestQueue()
         run_config = RunConfig(
             streaming_mode=StreamingMode.BIDI,
-            speech_config=types.SpeechConfig(
-                voice_config=types.VoiceConfig(
-                    prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=VOICE_NAME)
+            speech_config=genai_types.SpeechConfig(
+                voice_config=genai_types.VoiceConfig(
+                    prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(voice_name=VOICE_NAME)
                 )
             ),
-            response_modalities=[types.Modality.AUDIO, types.Modality.TEXT],
-            output_audio_transcription=types.AudioTranscriptionConfig(),
-            input_audio_transcription=types.AudioTranscriptionConfig(),
+            response_modalities=[genai_types.Modality.AUDIO, genai_types.Modality.TEXT],
+            output_audio_transcription=genai_types.AudioTranscriptionConfig(),
+            input_audio_transcription=genai_types.AudioTranscriptionConfig(),
         )
         audio_queue = asyncio.Queue()
 
@@ -106,7 +106,7 @@ class ADKWebSocketServer(BaseWebSocketServer):
                 while True:
                     data = await audio_queue.get()
                     live_request_queue.send_realtime(
-                        types.Blob(data=data, mime_type=f"audio/pcm;rate={SEND_SAMPLE_RATE}")
+                        genai_types.Blob(data=data, mime_type=f"audio/pcm;rate={SEND_SAMPLE_RATE}")
                     )
                     audio_queue.task_done()
 
@@ -172,4 +172,3 @@ if __name__ == "__main__":
         asyncio.run(server.start())
     except KeyboardInterrupt:
         logger.info("Exiting application...")
-
