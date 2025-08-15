@@ -60,11 +60,8 @@ class ADKWebSocketServer(BaseWebSocketServer):
 
     async def process_audio(self, websocket, client_id):
         self.active_clients[client_id] = websocket
-        session = await self.session_service.create_session(
-            app_name="wealth_advisor_assistant",
-            user_id=f"user_{client_id}",
-            session_id=f"session_{client_id}",
-        )
+        
+        # Runner is initialized without a session object now
         runner = Runner(
             app_name="wealth_advisor_assistant",
             agent=self.agent,
@@ -112,8 +109,10 @@ class ADKWebSocketServer(BaseWebSocketServer):
                 interrupted_in_turn = False
                 user_transcript = ""
 
+                # CORRECTED: Call run_live with user_id and session_id instead of a session object.
                 async for event in runner.run_live(
-                    session=session,
+                    user_id=f"user_{client_id}",
+                    session_id=f"session_{client_id}",
                     live_request_queue=live_request_queue,
                     run_config=run_config,
                 ):
@@ -126,17 +125,13 @@ class ADKWebSocketServer(BaseWebSocketServer):
 
                             # Handle agent text output (transcription of its speech)
                             if hasattr(part, "text") and part.text and event.content.role == "model":
-                                # Refined logic: Use the final text if available, otherwise stream partials.
-                                # This requires inspecting the event object more closely.
-                                # Assuming a hypothetical `part.is_partial` attribute for robustness.
-                                is_partial = not hasattr(part, 'is_final') or not part.is_final # Hypothetical robust check
-                                if is_partial: # Send partial transcripts for real-time feel
+                                is_partial = not hasattr(part, 'is_final') or not part.is_final
+                                if is_partial:
                                      await websocket.send(json.dumps({"type": "text", "data": part.text}))
 
                             # Handle user text input (transcription of user speech)
                             if hasattr(part, "text") and part.text and event.content.role == "user":
                                 user_transcript += part.text
-                                # Send the partial transcript to the client for a more responsive feel
                                 await websocket.send(json.dumps({"type": "user_transcript", "data": user_transcript}))
 
                     # Handle interruption event
@@ -151,11 +146,9 @@ class ADKWebSocketServer(BaseWebSocketServer):
                             logger.info("✅ Turn complete")
                             await websocket.send(json.dumps({"type": "turn_complete"}))
 
-                        # Log final user transcript for this turn
                         if user_transcript.strip():
                             logger.info(f"User transcript: '{user_transcript.strip()}'")
 
-                        # Reset for the next turn
                         interrupted_in_turn = False
                         user_transcript = ""
 
