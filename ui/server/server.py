@@ -33,7 +33,7 @@ from google.cloud.aiplatform_v1beta1.types import (
     PrebuiltVoiceConfig,
 )
 from tools import (
-    get_user_portfolio_summary,response_modalities=[Modality.AUDIO, Modality.TEXT],
+    get_user_portfolio_summary,
     get_market_news_and_sentiment,
     get_citi_perspective,
 )
