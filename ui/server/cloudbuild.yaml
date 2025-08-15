@@ -32,14 +32,19 @@ steps:
       - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/adk-audio-assistant/audio-assistant:$SHORT_SHA'
       - '--region=us-central1'
       - '--platform=managed'
-      - '--port=8080'
       - '--allow-unauthenticated'
       - '--memory=1Gi'
       - '--cpu=1'
       - '--min-instances=1'
       - '--max-instances=10'
       - '--session-affinity'
-      - '--set-env-vars=GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1'
+      - '--set-env-vars=GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1,BIGQUERY_DATASET=$_BIGQUERY_DATASET,VERTEX_AI_SEARCH_DATASTORE_ID=$_VERTEX_AI_SEARCH_DATASTORE_ID,ADK_MODEL=$_ADK_MODEL'
+      - '--update-secrets=ALPHA_VANTAGE_API_KEY=ALPHA_VANTAGE_API_KEY:latest'
 
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/adk-audio-assistant/audio-assistant:$SHORT_SHA'
+
+substitutions:
+  _BIGQUERY_DATASET: 'fsi-banking-agentspace.awm'
+  _VERTEX_AI_SEARCH_DATASTORE_ID: 'citi_perspectives_datastore'
+  _ADK_MODEL: 'gemini-2.0-flash-live-preview-04-09'

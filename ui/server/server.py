@@ -42,7 +42,9 @@ from common import (
 class ADKWebSocketServer(BaseWebSocketServer):
     """WebSocket server implementation using Google ADK."""
 
-    def __init__(self, host="0.0.0.0", port=8080):
+    def __init__(self, host="0.0.0.0", port=None):
+        if port is None:
+            port = int(os.getenv("PORT", 8080))
         super().__init__(host, port)
         self.agent = Agent(
             name="wealth_advisor_agent",

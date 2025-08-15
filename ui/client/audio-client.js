@@ -3,9 +3,22 @@
  * Refactored to use an event emitter pattern for robust state management.
  */
 class AudioClient extends EventTarget {
-    constructor(serverUrl = 'ws://localhost:8765') {
+    constructor(serverUrl = null) {
         super();
-        this.serverUrl = serverUrl;
+
+        if (serverUrl) {
+            this.serverUrl = serverUrl;
+        } else {
+            const isSecure = window.location.protocol === 'https:';
+            const protocol = isSecure ? 'wss://' : 'ws://';
+            let host = window.location.host;
+            // In a local development environment, the host might not include the port,
+            // so we append the standard local server port.
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                host = `${window.location.hostname}:8080`;
+            }
+            this.serverUrl = `${protocol}${host}`;
+        }
         this.ws = null;
         this.recorder = null;
         this.audioContext = null;

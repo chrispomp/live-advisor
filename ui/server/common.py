@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # --- Constants ---
-MODEL = "gemini-2.0-flash-live-preview-04-09"
+MODEL = os.getenv("ADK_MODEL", "gemini-2.0-flash-live-preview-04-09")
 VOICE_NAME = "Aoede" # A professional and clear voice for the advisor
 
 # Audio sample rates

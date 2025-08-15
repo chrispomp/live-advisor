@@ -1,31 +1,25 @@
-# Multimodal Live API with Gemini: Two Approaches
+# ADK Multimodal Audio Agent
 
-This project demonstrates bidirectional audio conversations with Google's Gemini 2.0 Flash Live API integrated into a web interface. It features a client-side audio handling approach where all audio recording and playback happens in the browser.
-
-The project showcases **two different approaches** to implementing the same functionality:
-
-1. **Google ADK** (Agent Development Kit) - Using the higher-level agent-based framework
-2. **Direct LiveAPI** - Using the lower-level Gemini Live API directly
+This project demonstrates a bidirectional audio agent powered by Google's Gemini Flash 1.5 model and the Google Agent Development Kit (ADK). It features a web-based interface where all audio processing, including recording and playback, is handled on the client-side.
 
 ## Project Structure
 
-- `server/common.py` - Shared components and utilities used by both implementations
-- `server/server_adk.py` - Server implementation using Google ADK
-- `server/server.py` - Server implementation using Gemini LiveAPI directly
-- `client/audio-client.js` - JavaScript client for handling audio in the browser
-- `client/index.html` - Web interface with IKEA-inspired design
-- `server/requirements.txt` - Python dependencies
+- `server/server.py`: The core WebSocket server implementation using the Google ADK.
+- `server/tools.py`: Defines the tools available to the agent (e.g., portfolio lookup, news).
+- `server/common.py`: Shared utilities and configuration.
+- `client/audio-client.js`: Client-side JavaScript for handling audio and WebSocket communication.
+- `client/index.html`: The main web interface.
+- `server/requirements.txt`: Python dependencies.
 
 ## Key Features
 
-- **Two implementation approaches** for comparison and learning
-- **Audio handled entirely on the client side** - No need for server-side audio libraries
-- **Bidirectional audio conversations** with Gemini Live AI
-- **Function calling** for order status lookup
-- **Interruption detection** (interrupt the AI while it's speaking)
-- **Session persistence** with session ID tracking
-- **Responsive UI**
-- **Real-time transcription** of both input and output speech
+- **Google ADK Implementation**: Built with the official agent-based framework.
+- **Client-Side Audio Handling**: No server-side audio libraries are needed, simplifying deployment.
+- **Bidirectional Audio Conversations**: Real-time, back-and-forth conversation with the Gemini model.
+- **Function Calling**: The agent can use tools to retrieve information (e.g., check portfolio status).
+- **Interruption Handling**: Users can interrupt the agent while it's speaking.
+- **Session Management**: Tracks conversation state with a session ID.
+- **Real-time Transcription**: Displays transcriptions of both user and agent speech.
 
 ## Setup Instructions
 
@@ -35,21 +29,22 @@ The project showcases **two different approaches** to implementing the same func
 pip install -r server/requirements.txt
 ```
 
-No special audio libraries needed! Just standard WebSocket and Gemini dependencies.
+### 2. Configure Environment Variables
 
-### 2. Start the WebSocket Server
+The application requires a Google Cloud Project ID and an Alpha Vantage API key for the news tool. Set these in your environment:
 
-To run with the ADK implementation:
 ```bash
-python server/server_adk.py
+export GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+export ALPHA_VANTAGE_API_KEY="your-alpha-vantage-key"
 ```
 
-To run with the LiveAPI implementation:
+### 3. Start the WebSocket Server
+
 ```bash
 python server/server.py
 ```
 
-The server will start and listen for WebSocket connections on port 8765.
+The server will start and listen for WebSocket connections on port 8080.
 
 ### 3. Open the Web Interface
 
@@ -90,5 +85,5 @@ Then navigate to `http://localhost:8000/client/index.html` in your browser.
 ## Troubleshooting
 
 - **Microphone Access**: Ensure your browser has permission to access your microphone
-- **WebSocket Connection**: Check that the server is running and accessible (default: ws://localhost:8765)
+- **WebSocket Connection**: Check that the server is running and accessible (default: ws://localhost:8080)
 - **Audio Issues**: Verify that your microphone and speakers are working correctly

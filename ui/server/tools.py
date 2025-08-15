@@ -9,12 +9,17 @@ from google.cloud import aiplatform_v1beta1 as aiplatform
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "demo") # Use 'demo' for testing, but expect a real key in prod
-BIGQUERY_DATASET = "fsi-banking-agentspace.awm" # As per REQ-202
-VERTEX_AI_SEARCH_DATASTORE_ID = "citi_perspectives_datastore" # A placeholder datastore ID
+BIGQUERY_DATASET = os.getenv("BIGQUERY_DATASET", "fsi-banking-agentspace.awm")
+VERTEX_AI_SEARCH_DATASTORE_ID = os.getenv("VERTEX_AI_SEARCH_DATASTORE_ID", "citi_perspectives_datastore")
 
 # Initialize clients
-bq_client = bigquery.Client(project=PROJECT_ID)
-vertex_ai_search_client = aiplatform.SearchServiceClient()
+try:
+    bq_client = bigquery.Client(project=PROJECT_ID)
+    vertex_ai_search_client = aiplatform.SearchServiceClient()
+except Exception as e:
+    print(f"Warning: Could not initialize Google Cloud clients: {e}")
+    bq_client = None
+    vertex_ai_search_client = None
 
 def get_user_portfolio_summary(client_id: str) -> str:
     """
@@ -27,19 +32,38 @@ def get_user_portfolio_summary(client_id: str) -> str:
         A JSON string with the total market value and top 3 holdings,
         or a message indicating that the portfolio could not be retrieved.
     """
-    query = f\"\"\"
+    if not bq_client:
+        return json.dumps({"error": "The BigQuery client is not available. Please check your Google Cloud credentials."})
+
+    query = f"""
+        WITH ClientHoldings AS (
+            SELECT
+                ticker,
+                security_name,
+                market_value
+            FROM
+                `{PROJECT_ID}.{BIGQUERY_DATASET}.holdings`
+            WHERE
+                client_id = @client_id
+        ),
+        TotalValue AS (
+            SELECT
+                SUM(market_value) AS total_market_value
+            FROM
+                ClientHoldings
+        )
         SELECT
             h.ticker,
             h.security_name,
-            h.market_value
+            h.market_value,
+            tv.total_market_value
         FROM
-            `{PROJECT_ID}.{BIGQUERY_DATASET}.holdings` AS h
-        WHERE
-            h.client_id = @client_id
+            ClientHoldings h,
+            TotalValue tv
         ORDER BY
             h.market_value DESC
         LIMIT 3;
-    \"\"\"
+    """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("client_id", "STRING", client_id),
@@ -47,23 +71,22 @@ def get_user_portfolio_summary(client_id: str) -> str:
     )
     try:
         query_job = bq_client.query(query, job_config=job_config)
-        results = query_job.result()
+        results = list(query_job.result())
 
-        holdings = list(results)
-        if not holdings:
+        if not results:
             return json.dumps({"message": "I could not retrieve your portfolio data at this time."})
 
-        # Calculate total market value (this requires a separate query or assumption)
-        # For this implementation, we'll assume the total value is a sum of all holdings,
-        # which is not explicitly in the top 3 query. A real implementation would need a separate query.
-        # Here we just sum the top 3 for demonstration.
-        total_market_value = sum(h.market_value for h in holdings)
+        total_market_value = results[0].total_market_value if results else 0
 
         response = {
             "total_market_value": total_market_value,
             "top_holdings": [
-                {"ticker": h.ticker, "security_name": h.security_name, "market_value": h.market_value}
-                for h in holdings
+                {
+                    "ticker": row.ticker,
+                    "security_name": row.security_name,
+                    "market_value": row.market_value,
+                }
+                for row in results
             ],
         }
         return json.dumps(response)
@@ -71,6 +94,8 @@ def get_user_portfolio_summary(client_id: str) -> str:
         print(f"Error querying BigQuery: {e}")
         return json.dumps({"error": "An error occurred while retrieving portfolio data."})
 
+
+from alpha_vantage.fundamentaldata import FundamentalData
 
 def get_market_news_and_sentiment(topic: str) -> str:
     """
@@ -82,34 +107,37 @@ def get_market_news_and_sentiment(topic: str) -> str:
     Returns:
         A JSON string summarizing up to 5 news articles, including title, summary, and sentiment.
     """
-    # Note: The alpha_vantage library doesn't directly provide a news/sentiment API in this form.
-    # This function simulates the expected output based on a hypothetical API call.
-    # A real implementation would use a news API like Alpha Vantage's or another provider.
+    if not ALPHA_VANTAGE_API_KEY or ALPHA_VANTAGE_API_KEY == "demo":
+        return json.dumps({
+            "error": "Missing or invalid Alpha Vantage API key. Please set the ALPHA_VANTAGE_API_KEY environment variable."
+        })
+
     try:
-        # This is a placeholder for a real API call.
-        # The Alpha Vantage API for news is called "News & Sentiments".
-        # from alpha_vantage.fundamentaldata import FundamentalData
-        # fd = FundamentalData(key=ALPHA_VANTAGE_API_KEY)
-        # news_data, _ = fd.get_news_sentiment(tickers=topic)
-        # For now, returning mock data.
-        mock_news = {
-            "articles": [
-                {
-                    "title": f"Positive Outlook for {topic}",
-                    "summary": f"Analysts are bullish on {topic} following recent product announcements.",
-                    "overall_sentiment": "Positive"
-                },
-                {
-                    "title": f"Market Volatility Impacts {topic}",
-                    "summary": f"Broader market trends are causing short-term volatility for {topic} stock.",
-                    "overall_sentiment": "Neutral"
-                }
-            ]
-        }
-        return json.dumps(mock_news)
+        fd = FundamentalData(key=ALPHA_VANTAGE_API_KEY, output_format='json')
+        news_data, _ = fd.get_news_sentiment(tickers=topic, limit=5) # Limit to 5 articles
+
+        if not news_data or 'feed' not in news_data or not news_data['feed']:
+             return json.dumps({"articles": [], "message": f"No news found for {topic}."})
+
+        articles = []
+        for item in news_data['feed']:
+            # Find the most relevant ticker sentiment
+            ticker_sentiment = next((s for s in item.get('ticker_sentiment', []) if s.get('ticker') == topic.upper()), None)
+
+            articles.append({
+                "title": item.get('title'),
+                "summary": item.get('summary'),
+                "url": item.get('url'),
+                "overall_sentiment": ticker_sentiment.get('ticker_sentiment_label', 'N/A') if ticker_sentiment else 'N/A'
+            })
+
+        return json.dumps({"articles": articles})
     except Exception as e:
-        print(f"Error fetching market news: {e}")
-        return json.dumps({"error": "An error occurred while fetching market news."})
+        print(f"Error fetching market news from Alpha Vantage: {e}")
+        # This could be due to an invalid API key, network issues, or an invalid ticker.
+        # Provide a more specific error message if possible.
+        error_message = "An error occurred while fetching market news. The ticker symbol may be invalid or the API key may have expired."
+        return json.dumps({"error": error_message})
 
 
 def get_citi_perspective(question: str) -> str:

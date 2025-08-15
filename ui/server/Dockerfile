@@ -29,6 +29,7 @@ COPY --from=builder --chown=nonroot:nonroot /app/venv ./venv
 # Copy application code
 COPY --chown=nonroot:nonroot server.py .
 COPY --chown=nonroot:nonroot common.py .
+COPY --chown=nonroot:nonroot tools.py .
 COPY --chown=nonroot:nonroot system_prompt.txt .
 
 # Set environment to use the venv
@@ -43,4 +44,5 @@ EXPOSE 8080
 
 # Run the application with Gunicorn and Uvicorn workers
 # The number of workers can be tuned based on performance testing.
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8080", "server:app"]
+# Use the PORT environment variable provided by Cloud Run.
+CMD exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0 -k uvicorn.workers.UvicornWorker server:app
