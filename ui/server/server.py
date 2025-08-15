@@ -25,6 +25,7 @@ from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 # Import classes that remain in the generativeai library
 from google.genai import types as google_genai_types
+from google.genai.types import Modality
 # Import classes that have moved to the aiplatform library
 from google.cloud.aiplatform_v1beta1.types import (
     SpeechConfig,
@@ -87,7 +88,7 @@ class ADKWebSocketServer(BaseWebSocketServer):
                     prebuilt_voice_config=PrebuiltVoiceConfig(voice_name=VOICE_NAME)
                 )
             ),
-            response_modalities=["AUDIO", "TEXT"],
+            response_modalities=[Modality.AUDIO, Modality.TEXT],
             output_audio_transcription=google_genai_types.AudioTranscriptionConfig(),
         )
         audio_queue = asyncio.Queue()
