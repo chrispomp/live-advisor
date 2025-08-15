@@ -27,6 +27,8 @@ For local development, you need to authenticate with Google Cloud to use service
 
 ```bash
 gcloud auth application-default login
+
+gcloud auth application-default set-quota-project fsi-banking-agentspace
 ```
 
 ### 3. Configure Environment Variables
@@ -41,10 +43,12 @@ The application requires the following environment variables to be set:
 
 You can set them in your shell like this:
 ```bash
-export GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
-export ALPHA_VANTAGE_API_KEY="your-alpha-vantage-key"
-export BIGQUERY_DATASET="your-bigquery-dataset"
+export GOOGLE_CLOUD_PROJECT="fsi-banking-agentspace"
+export ALPHA_VANTAGE_API_KEY="6QRF1QS1W28T036V"
+export GOOGLE_CLOUD_LOCATION="us-central1"
+export BIGQUERY_DATASET="fsi-banking-agentspace.awm"
 export VERTEX_AI_SEARCH_DATASTORE_ID="your-datastore-id"
+export PORT=8080
 ```
 
 **Note on Deployment:** When deploying to Cloud Run, the `ALPHA_VANTAGE_API_KEY` should be stored in [Google Secret Manager](https://cloud.google.com/secret-manager) as a secret named `ALPHA_VANTAGE_API_KEY`. The `cloudbuild.yaml` file is configured to mount this secret as an environment variable in the Cloud Run service.

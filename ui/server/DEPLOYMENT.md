@@ -15,7 +15,7 @@ This guide walks through deploying the ADK Audio Assistant to Google Cloud Run w
 
 ```bash
 gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
+gcloud config set project fsi-banking-agentspace
 ```
 
 ### 2. Build and Deploy Manually

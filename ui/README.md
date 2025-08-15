@@ -34,8 +34,8 @@ pip install -r server/requirements.txt
 The application requires a Google Cloud Project ID and an Alpha Vantage API key for the news tool. Set these in your environment:
 
 ```bash
-export GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
-export ALPHA_VANTAGE_API_KEY="your-alpha-vantage-key"
+export GOOGLE_CLOUD_PROJECT="fsi-banking-agentspace"
+export ALPHA_VANTAGE_API_KEY="6QRF1QS1W28T036V"
 ```
 
 ### 3. Start the WebSocket Server
