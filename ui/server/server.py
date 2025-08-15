@@ -30,7 +30,6 @@ from google.cloud.aiplatform_v1beta1.types import (
     SpeechConfig,
     VoiceConfig,
     PrebuiltVoiceConfig,
-    Modality
 )
 from tools import (
     get_user_portfolio_summary,
@@ -88,7 +87,7 @@ class ADKWebSocketServer(BaseWebSocketServer):
                     prebuilt_voice_config=PrebuiltVoiceConfig(voice_name=VOICE_NAME)
                 )
             ),
-            response_modalities=[Modality.AUDIO, Modality.TEXT],
+            response_modalities=["AUDIO", "TEXT"],
             output_audio_transcription=google_genai_types.AudioTranscriptionConfig(),
         )
         audio_queue = asyncio.Queue()
